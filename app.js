@@ -26,4 +26,16 @@ const db = mysql.createConnection({
 
 });
 
+
+
+
+app.get('/register', (req, res) => {
+    res.render('register');
+});
+
+
+
+
+
+
 app.listen(3000, () => console.log('Running on http://localhost:3000'));
