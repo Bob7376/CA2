@@ -8,23 +8,26 @@ const bcrypt = require('bcrypt'); // hash the passwords for security
 const app = express(); 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: true})); // lets the server read what the users type into forms 
-
+app.use(express.static('public'));
+// Add this line to parse incoming JSON request bodies
+app.use(express.json());
 
 app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false
+  secret: process.env.SESSION_SECRET, // Add this line
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Set to true if using HTTPS, false for local localhost
 }));
 
 
 const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
+
 
 
 
@@ -96,8 +99,139 @@ app.get('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/login'));
 });
 
+// Search Route
+app.get('/search', (req, res) => {
+    // Capture the search term from the URL query parameters (e.g., /search?query=Peter)
+    const searchTerm = req.query.query || '';
 
+    // SQL query using LIKE to search both name and student_id
+    const sql = `
+      SELECT 
+        s.student_id, 
+        s.student_name, 
+        s.class_id, 
+        s.image, 
+        a.status, 
+        a.remarks
+      FROM attendance_records a
+      INNER JOIN student s ON a.student_id = s.student_id
+      WHERE s.student_name LIKE ? OR s.student_id LIKE ?;
+    `;
 
+    // Wrap the search term with SQL wildcards (%) so it matches partial text
+    const queryValue = `%${searchTerm}%`;
+
+    db.query(sql, [queryValue, queryValue], (err, results) => {
+        if (err) {
+            console.error("Error executing search query:", err);
+            return res.status(500).send("Database error occurred.");
+        }
+
+        // Render your search.ejs view and pass the query results
+       res.render('search', { 
+            students: results, 
+            user: req.session.user // This gives navbar.ejs the data it is looking for!
+        });
+    });
+});
+
+app.get('/classes', (req, res) => {
+    // 1. Safety check: Ensure the user is logged in
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    const selectedClass = req.query.classId || ''; // Get the filter parameter from URL
+
+    // 2. Fetch unique class IDs to populate your dropdown filter dynamically
+    const classListSql = "SELECT DISTINCT class_id FROM student ORDER BY class_id;";
+    
+    db.query(classListSql, (err, classRows) => {
+        if (err) {
+            console.error("Error fetching class list:", err);
+            return res.status(500).send("Database error.");
+        }
+
+        // Extract class IDs into an array (e.g., ['1A', '1B'])
+        const classes = classRows.map(row => row.class_id);
+
+        // 3. Build the query to get students (optionally filtered by class_id)
+        let studentSql = `
+            SELECT s.student_id, s.student_name, s.class_id, s.image, a.status, a.remarks, a.session
+            FROM student s
+            LEFT JOIN attendance_records a ON s.student_id = a.student_id
+        `;
+        const queryParams = [];
+
+        if (selectedClass) {
+            studentSql += " WHERE s.class_id = ?";
+            queryParams.push(selectedClass);
+        }
+
+        db.query(studentSql, queryParams, (err, studentRows) => {
+            if (err) {
+                console.error("Error fetching students:", err);
+                return res.status(500).send("Database error.");
+            }
+
+            // 4. Render the page, passing students, classes, selected class, and user
+            res.render('classes', {
+                students: studentRows,
+                classes: classes,
+                selectedClass: selectedClass,
+                user: req.session.user // Kept for your navbar!
+            });
+        });
+    });
+});
+
+app.get('/edit-attendance', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Unauthorized Access.");
+    }
+
+    // Fetch student details, including our new group_name column
+    const studentSql = `
+        SELECT s.student_id, s.student_name, s.class_id, s.group_name, a.session 
+        FROM student s
+        LEFT JOIN attendance_records a ON s.student_id = a.student_id
+        ORDER BY s.group_name ASC, s.student_name ASC;
+    `;
+
+    db.query(studentSql, (err, studentRows) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database error.");
+        }
+        res.render('edit-attendance', {
+            students: studentRows,
+            user: req.session.user
+        });
+    });
+});
+
+app.post('/admin/assign-group', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).json({ success: false });
+    }
+
+    const { groupName, studentIds } = req.body;
+
+    if (!groupName || !studentIds || studentIds.length === 0) {
+        return res.status(400).json({ success: false, message: "Missing fields" });
+    }
+
+    // Update the group_name for all selected student IDs
+    const sql = "UPDATE student SET group_name = ? WHERE student_id IN (?);";
+    
+    db.query(sql, [groupName, studentIds], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false });
+        }
+        res.json({ success: true });
+    });
+});
 
 
 
