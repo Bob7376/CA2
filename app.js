@@ -10,8 +10,18 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: true})); // lets the server read what the users type into forms 
 
 
+const sessionSecret = process.env.SESSION_SECRET || 'development-only-session-secret';
+
+if (!process.env.SESSION_SECRET) {
+    console.warn('SESSION_SECRET is missing. Using a development-only fallback secret.');
+}
+
+if (!process.env.DB_NAME) {
+    console.warn('DB_NAME is missing from .env. Database queries will fail until it is set.');
+}
+
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false
 }));
@@ -22,7 +32,8 @@ const db = mysql.createConnection({
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    ssl: { rejectUnauthorized: true },
+    ...(process.env.DB_NAME ? { database: process.env.DB_NAME } : {})
 
 });
 
