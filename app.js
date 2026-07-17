@@ -53,7 +53,7 @@ app.post('/register', (req, res) => {
             return res.render('register', { error: 'Something went wrong. Try again.' });
         }
 
-        const sql = 'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)';
+        const sql = 'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)';
 pool.query(sql, [name, email, hashedPassword, role], (err) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') {
@@ -191,27 +191,38 @@ app.get('/classes', (req, res) => {
 });
 
 app.get('/edit-attendance', (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') {
-        return res.status(403).send("Unauthorized Access.");
-    }
-
-    // Fetch student details, including our new group_name column
-    const studentSql = `
-        SELECT s.student_id, s.student_name, s.class_id, s.group_name, a.session 
+    // 1. Select module_slot instead of session
+    const query = `
+        SELECT s.student_id, s.student_name, s.class_id, a.module_slot 
         FROM student s
         LEFT JOIN attendance_records a ON s.student_id = a.student_id
-        ORDER BY s.group_name ASC, s.student_name ASC;
+        ORDER BY s.student_name ASC;
     `;
 
-    db.query(studentSql, (err, studentRows) => {
+    pool.query(query, (err, results) => {
         if (err) {
-            console.error(err);
+            console.error("Database Error:", err);
             return res.status(500).send("Database error.");
         }
-        res.render('edit-attendance', {
-            students: studentRows,
-            user: req.session.user
+
+        const allStudents = results;
+
+        // 2. Map groups using the new module_slot key
+        const groups = {};
+        results.forEach(student => {
+            if (student.module_slot) {
+                if (!groups[student.module_slot]) {
+                    groups[student.module_slot] = [];
+                }
+                groups[student.module_slot].push(student);
+            }
         });
+
+        res.render('edit-attendance', { 
+            students: allStudents,
+            groups: groups,
+            user: req.session ? req.session.user : null
+        }); 
     });
 });
 
@@ -229,7 +240,7 @@ app.post('/admin/assign-group', (req, res) => {
     // Update the group_name for all selected student IDs
     const sql = "UPDATE student SET group_name = ? WHERE student_id IN (?);";
     
-    db.query(sql, [groupName, studentIds], (err, result) => {
+    pool.query(sql, [groupName, studentIds], (err, result) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ success: false });
