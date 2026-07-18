@@ -28,7 +28,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-  // ADD THIS LINE TO FIX THE SSL ERROR:
+  
   ssl: {
     rejectUnauthorized: false
   }
@@ -104,13 +104,12 @@ app.get('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/login'));
 });
 
-// Search Route
-app.get('/search', (req, res) => {
-    // Capture the search term from the URL query parameters (e.g., /search?query=Peter)
-    const searchTerm = req.query.query || '';
 
-    // SQL query using LIKE to search both name and student_id
-    const sql = `
+app.get('/search', (req, res) => {
+const searchTerm = req.query.query || '';
+
+
+const sql = `
       SELECT 
         s.student_id, 
         s.student_name, 
@@ -124,7 +123,7 @@ app.get('/search', (req, res) => {
       WHERE s.student_name LIKE ? OR s.student_id LIKE ?;
     `;
 
-    // Wrap the search term with SQL wildcards (%) so it matches partial text
+
     const queryValue = `%${searchTerm}%`;
 
     pool.query(sql, [queryValue, queryValue], (err, results) => {
@@ -133,23 +132,21 @@ app.get('/search', (req, res) => {
             return res.status(500).send("Database error occurred.");
         }
 
-        // Render your search.ejs view and pass the query results
+
        res.render('search', { 
             students: results, 
-            user: req.session.user // This gives navbar.ejs the data it is looking for!
+            user: req.session.user 
         });
     });
 });
 
 app.get('/classes', (req, res) => {
-    // 1. Safety check: Ensure the user is logged in
+
     if (!req.session.user) {
         return res.redirect('/login');
     }
 
-    const selectedClass = req.query.classId || ''; // Get the filter parameter from URL
-
-    // 2. Fetch unique class IDs to populate your dropdown filter dynamically
+    const selectedClass = req.query.classId || ''; 
     const classListSql = "SELECT DISTINCT class_id FROM student ORDER BY class_id;";
     
     pool.query(classListSql, (err, classRows) => {
@@ -158,10 +155,10 @@ app.get('/classes', (req, res) => {
             return res.status(500).send("Database error.");
         }
 
-        // Extract class IDs into an array (e.g., ['1A', '1B'])
+        
         const classes = classRows.map(row => row.class_id);
 
-        // 3. Build the query to get students (optionally filtered by class_id)
+
         let studentSql = `
             SELECT s.student_id, s.student_name, s.class_id, s.image, a.status, a.remarks, a.session
             FROM student s
@@ -180,19 +177,22 @@ app.get('/classes', (req, res) => {
                 return res.status(500).send("Database error.");
             }
 
-            // 4. Render the page, passing students, classes, selected class, and user
+            
             res.render('classes', {
                 students: studentRows,
                 classes: classes,
                 selectedClass: selectedClass,
-                user: req.session.user // Kept for your navbar!
+                user: req.session.user 
             });
         });
     });
 });
 
 app.get('/edit-attendance', (req, res) => {
-    // 1. Select module_slot instead of session
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Access denied.");
+    }
+
     const query = `
         SELECT s.student_id, s.student_name, s.class_id, a.module_slot 
         FROM student s
@@ -208,7 +208,7 @@ app.get('/edit-attendance', (req, res) => {
 
         const allStudents = results;
 
-        // 2. Map groups using the new module_slot key
+        
         const groups = {};
         results.forEach(student => {
             if (student.module_slot) {
