@@ -117,7 +117,8 @@ app.get('/search', (req, res) => {
         s.class_id, 
         s.image, 
         a.status, 
-        a.remarks
+        a.remarks,
+        a.module_slot
       FROM attendance_records a
       INNER JOIN student s ON a.student_id = s.student_id
       WHERE s.student_name LIKE ? OR s.student_id LIKE ?;

@@ -38,6 +38,7 @@
                                     <th>Photo</th>
                                     <th>Name</th>
                                     <th>Class</th>
+                                    <th>Module Slot</th>
                                     <th>Status</th>
                                     <th>Remarks</th>
                                 </tr>
@@ -53,6 +54,7 @@
                                             </td>
                                             <td class="align-middle"><%= student.student_name %></td>
                                             <td class="align-middle"><span class="badge bg-secondary"><%= student.class_id %></span></td>
+                                            <td class="align-middle"><span class="badge bg-secondary"><%= student.module_slot || 'N/A' %></span></td>
                                             <td class="align-middle">
                                                 <span class="badge <%= student.status === 'Present' ? 'bg-success' : 'bg-danger' %>">
                                                     <%= student.status %>
@@ -63,7 +65,7 @@
                                     <% }) %>
                                 <% } else { %>
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">No student records found. Try another search!</td>
+                                        <td colspan="7" class="text-center text-muted py-4">No student records found. Try another search!</td>
                                     </tr>
                                 <% } %>
                             </tbody>
