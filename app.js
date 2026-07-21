@@ -273,7 +273,7 @@ app.get('/add-student', (req, res) => {
         return res.status(403).send("Access denied.");
     }
 
-    res.render('add-student', {
+    res.render('add-new-info', {
         user: req.session.user,
         error: null,
         success: null
@@ -288,16 +288,20 @@ app.post('/add-student', (req, res) => {
     const { student_id, student_name, class_id, image } = req.body;
 
     if (!student_id || !student_name || !class_id) {
-        return res.render('add-student', {
+        return res.render('add-new-info', {
             user: req.session.user,
             error: 'Student ID, Name, and Class are required.',
             success: null
         });
     }
 
-    const sql = 'INSERT INTO student (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
+    // Default image fallback if left empty
+    const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
 
-    pool.query(sql, [student_id, student_name, class_id, image || 'default.png'], (err) => {
+    // Note: Updated table name to 'students' (double check your MySQL table name!)
+    const sql = 'INSERT INTO students (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
+
+    pool.query(sql, [student_id, student_name, class_id, photoPath], (err) => {
         if (err) {
             console.error("Error adding student:", err);
 
@@ -309,7 +313,7 @@ app.post('/add-student', (req, res) => {
                 });
             }
 
-            return res.render('add-student', {
+            return res.render('add-new-info', {
                 user: req.session.user,
                 error: 'Something went wrong. Try again.',
                 success: null
