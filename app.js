@@ -12,7 +12,32 @@ app.use(express.static('public'));
 // Add this line to parse incoming JSON request bodies
 app.use(express.json());
 
+const sessionSecret = process.env.SESSION_SECRET || 'development-only-session-secret';
+
+if (!process.env.SESSION_SECRET) {
+    console.warn('SESSION_SECRET is missing. Using a development-only fallback secret.');
+}
+
+if (!process.env.DB_NAME) {
+    console.warn('DB_NAME is missing from .env. Database queries will fail until it is set.');
+}
+
 app.use(session({
+<<<<<<< HEAD
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false
+}));
+
+
+const db = mysql.createConnection({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: { rejectUnauthorized: true },
+    ...(process.env.DB_NAME ? { database: process.env.DB_NAME } : {})
+=======
   secret: process.env.SESSION_SECRET, // Add this line
   resave: false,
   saveUninitialized: true,
@@ -20,6 +45,7 @@ app.use(session({
 }));
 
 
+>>>>>>> origin/main
 
 
 const pool = mysql.createPool({
