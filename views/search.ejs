@@ -40,6 +40,7 @@
                                     <th>Class</th>
                                     <th>Status</th>
                                     <th>Remarks</th>
+                                    <th>Details</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -59,6 +60,9 @@
                                                 </span>
                                             </td>
                                             <td class="align-middle text-muted"><%= student.remarks || 'No remarks' %></td>
+                                            <td class="align-middle">
+                                                <a href="/students/<%= student.student_id %>" class="btn btn-sm btn-primary">View</a>
+                                            </td>
                                         </tr>
                                     <% }) %>
                                 <% } else { %>
