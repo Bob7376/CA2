@@ -1,4 +1,6 @@
+<<<<<<< HEAD
 node_modules 
 .env
-PLAN-auth.md
-.claude
+=======
+node_modules .env
+>>>>>>> origin/main
