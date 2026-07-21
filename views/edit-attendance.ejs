@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Organize Classes</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="bg-light">
+<body class="search-background">
 
     <%- include('partials/navbar') %>
 
@@ -20,7 +21,7 @@
             <!-- Simple Inline Action Box -->
             <div class="d-flex gap-2">
                 <input type="text" id="targetGroupName" class="form-control form-control-sm" placeholder="Enter Group Name (e.g., Group A)">
-                <button type="button" class="btn btn-primary btn-sm text-nowrap" onclick="assignToGroup()">Assign Group</button>
+                <button type="button" class="btn green-button btn-sm text-nowrap" onclick="assignToGroup()">Assign Group</button>
             </div>
         </div>
     </div>
@@ -42,7 +43,7 @@
     %>
         <div class="card shadow-sm border-0 mb-4">
             <!-- Group Header -->
-            <div class="card-header d-flex justify-content-between align-items-center <%= groupName === 'Unassigned' ? 'bg-secondary text-white' : 'bg-primary text-white' %>">
+            <div class="card-header dark-green-header d-flex justify-content-between align-items-center <%= groupName === 'Unassigned' ? 'bg-secondary text-white' : 'bg-primary text-white' %>">
                 <h5 class="mb-0">📁 <%= groupName %></h5>
                 <span class="badge bg-light text-dark"><%= groups[groupName].length %> Students</span>
             </div>
@@ -57,7 +58,7 @@
                                 <th style="width: 25%;">Student ID</th>
                                 <th style="width: 40%;">Full Name</th>
                                 <th style="width: 15%;">Assigned Class</th>
-                                <th style="width: 15%;">Session</th>
+                                <th style="width: 10%;">     </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -69,7 +70,7 @@
                                     <td><code><%= student.student_id %></code></td>
                                     <td class="fw-semibold"><%= student.student_name %></td>
                                     <td><span class="badge bg-light text-dark border">Class <%= student.class_id %></span></td>
-                                    <td><%= student.session ? 'Session ' + student.session : 'N/A' %></td>
+                                    <td><button class="btn btn-danger btn-sm" onclick="removeStudent('<%= student.student_id %>')">Remove</button></td>
                                 </tr>
                             <% }) %>
                         </tbody>
@@ -115,4 +116,32 @@ function assignToGroup() {
     .catch(err => console.error(err));
 }
 </script>
-   
+
+<script>
+function removeStudent(studentId) {
+    if (!confirm('Delete this student?')) return;
+    
+    // Find the button and get the closest row to remove
+    const button = event.target;
+    const row = button.closest('tr');
+    
+    fetch('/admin/remove-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: studentId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the row from the DOM immediately
+            row.remove();
+        } else {
+            alert('Failed to delete student.');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error deleting student.');
+    });
+}
+</script>

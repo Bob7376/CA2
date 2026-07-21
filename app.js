@@ -236,6 +236,19 @@ app.post('/admin/assign-group', (req, res) => {
     });
 });
 
+app.post('/admin/remove-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).json({ success: false });
+    }
+    const { studentId } = req.body;
 
-
+    const sql = "DELETE FROM student WHERE student_id = ?;";
+    pool.query(sql, [studentId], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.json({ success: false });
+        }
+        res.json({ success: true });
+    });
+});
 app.listen(3000, () => console.log('Running on http://localhost:3000'));
