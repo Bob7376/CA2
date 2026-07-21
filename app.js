@@ -37,14 +37,14 @@ const db = mysql.createConnection({
     password: process.env.DB_PASSWORD,
     ssl: { rejectUnauthorized: true },
     ...(process.env.DB_NAME ? { database: process.env.DB_NAME } : {})
-
-    secret: process.env.SESSION_SECRET, // Add this line
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // Set to true if using HTTPS, false for local localhost
 });
 
-
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false } // Set to true if using HTTPS, false for local
+}));
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
