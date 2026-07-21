@@ -1,0 +1,7 @@
+.auth-background{
+    background-image: url('/images2/republic.jpg');   
+ background-size: cover;    background-position: center;  
+ background-repeat: no-repeat;    min-height: 100vh;}
+
+
+ .green-button {    background-color: #145A32;    border-color: #145A32;    color: white;}

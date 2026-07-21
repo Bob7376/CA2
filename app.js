@@ -20,12 +20,16 @@ app.use(session({
 }));
 
 
-const db = mysql.createConnection({
+const pool = mysql.createPool({
   host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 
@@ -49,7 +53,7 @@ app.post('/register', (req, res) => {
         }
 
         const sql = 'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)';
-        db.query(sql, [name, email, hashedPassword, role], (err) => {
+        pool.query(sql, [name, email, hashedPassword, role], (err) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.render('register', { error: 'That email is already registered.' });
@@ -68,7 +72,7 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    db.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+    pool.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
         if (err || results.length === 0) {
             return res.render('login', { error: 'Invalid email or password.' });
         }
@@ -121,7 +125,7 @@ app.get('/search', (req, res) => {
     // Wrap the search term with SQL wildcards (%) so it matches partial text
     const queryValue = `%${searchTerm}%`;
 
-    db.query(sql, [queryValue, queryValue], (err, results) => {
+    pool.query(sql, [queryValue, queryValue], (err, results) => {
         if (err) {
             console.error("Error executing search query:", err);
             return res.status(500).send("Database error occurred.");
@@ -146,7 +150,7 @@ app.get('/classes', (req, res) => {
     // 2. Fetch unique class IDs to populate your dropdown filter dynamically
     const classListSql = "SELECT DISTINCT class_id FROM student ORDER BY class_id;";
     
-    db.query(classListSql, (err, classRows) => {
+    pool.query(classListSql, (err, classRows) => {
         if (err) {
             console.error("Error fetching class list:", err);
             return res.status(500).send("Database error.");
@@ -168,7 +172,7 @@ app.get('/classes', (req, res) => {
             queryParams.push(selectedClass);
         }
 
-        db.query(studentSql, queryParams, (err, studentRows) => {
+        pool.query(studentSql, queryParams, (err, studentRows) => {
             if (err) {
                 console.error("Error fetching students:", err);
                 return res.status(500).send("Database error.");
@@ -192,13 +196,12 @@ app.get('/edit-attendance', (req, res) => {
 
     // Fetch student details, including our new group_name column
     const studentSql = `
-        SELECT s.student_id, s.student_name, s.class_id, s.group_name, a.session 
+        SELECT s.student_id, s.student_name, s.class_id, s.group_name
         FROM student s
-        LEFT JOIN attendance_records a ON s.student_id = a.student_id
         ORDER BY s.group_name ASC, s.student_name ASC;
     `;
 
-    db.query(studentSql, (err, studentRows) => {
+    pool.query(studentSql, (err, studentRows) => {
         if (err) {
             console.error(err);
             return res.status(500).send("Database error.");
@@ -224,7 +227,7 @@ app.post('/admin/assign-group', (req, res) => {
     // Update the group_name for all selected student IDs
     const sql = "UPDATE student SET group_name = ? WHERE student_id IN (?);";
     
-    db.query(sql, [groupName, studentIds], (err, result) => {
+    pool.query(sql, [groupName, studentIds], (err, result) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ success: false });
