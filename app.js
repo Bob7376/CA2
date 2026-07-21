@@ -30,14 +30,7 @@ app.use(session({
 }));
 
 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    ssl: { rejectUnauthorized: true },
-    ...(process.env.DB_NAME ? { database: process.env.DB_NAME } : {})
-});
+
 
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -275,5 +268,60 @@ app.post('/admin/assign-group', (req, res) => {
 });
 
 
+app.get('/add-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Access denied.");
+    }
+
+    res.render('add-student', {
+        user: req.session.user,
+        error: null,
+        success: null
+    });
+});
+
+app.post('/add-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Access denied.");
+    }
+
+    const { student_id, student_name, class_id, image } = req.body;
+
+    if (!student_id || !student_name || !class_id) {
+        return res.render('add-student', {
+            user: req.session.user,
+            error: 'Student ID, Name, and Class are required.',
+            success: null
+        });
+    }
+
+    const sql = 'INSERT INTO student (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
+
+    pool.query(sql, [student_id, student_name, class_id, image || 'default.png'], (err) => {
+        if (err) {
+            console.error("Error adding student:", err);
+
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.render('add-student', {
+                    user: req.session.user,
+                    error: 'A student with that ID already exists.',
+                    success: null
+                });
+            }
+
+            return res.render('add-student', {
+                user: req.session.user,
+                error: 'Something went wrong. Try again.',
+                success: null
+            });
+        }
+
+        res.render('add-student', {
+            user: req.session.user,
+            error: null,
+            success: `Student "${student_name}" (${student_id}) was added successfully.`
+        });
+    });
+});
 
 app.listen(3000, () => console.log('Running on http://localhost:3000'));
