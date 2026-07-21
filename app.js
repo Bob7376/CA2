@@ -217,7 +217,7 @@ app.get('/students/:studentId', requireLogin, (req, res) => {
         ORDER BY session DESC;
     `;
 
-    db.query(studentSql, [studentId], (err, studentRows) => {
+    pool.query(studentSql, [studentId], (err, studentRows) => {
         if (err) {
             console.error("Error fetching student info:", err);
             return res.status(500).send("Database error.");
@@ -229,7 +229,7 @@ app.get('/students/:studentId', requireLogin, (req, res) => {
 
         const student = studentRows[0];
 
-        db.query(attendanceSql, [studentId], (err, attendanceRows) => {
+        pool.query(attendanceSql, [studentId], (err, attendanceRows) => {
             if (err) {
                 console.error("Error fetching attendance records:", err);
                 return res.status(500).send("Database error.");
@@ -346,7 +346,7 @@ app.post('/add-student', (req, res) => {
             console.error("Error adding student:", err);
 
             if (err.code === 'ER_DUP_ENTRY') {
-                return res.render('add-student', {
+                return res.render('add-new-info', {
                     user: req.session.user,
                     error: 'A student with that ID already exists.',
                     success: null
@@ -360,7 +360,7 @@ app.post('/add-student', (req, res) => {
             });
         }
 
-        res.render('add-student', {
+        res.render('add-new-info', {
             user: req.session.user,
             error: null,
             success: `Student "${student_name}" (${student_id}) was added successfully.`
