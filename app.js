@@ -335,6 +335,29 @@ app.post('/admin/remove-student', (req, res) => {
     });
 });
 
+app.post('/admin/edit-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).json({ success: false });
+    }
+
+    const { studentId, student_name, class_id, image } = req.body;
+
+    if (!studentId || !student_name || !class_id) {
+        return res.status(400).json({ success: false, message: "Missing fields" });
+    }
+
+    const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
+
+    const sql = "UPDATE student SET student_name = ?, class_id = ?, image = ? WHERE student_id = ?;";
+    pool.query(sql, [student_name, class_id, photoPath, studentId], (err, result) => {
+        if (err) {
+            console.error("Error editing student:", err);
+            return res.status(500).json({ success: false });
+        }
+        res.json({ success: true });
+    });
+});
+
 app.get('/students/:id', (req, res) => {
     if (!req.session.user) {
         return res.redirect('/login');
