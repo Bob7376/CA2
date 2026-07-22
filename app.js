@@ -52,7 +52,6 @@ app.post('/register', (req, res) => {
 
     bcrypt.hash(password, 10, (err, hashedPassword) => {
         if (err) {
-            console.error("BCRYPT ERROR:", err); // <-- Added log here
             return res.render('register', { error: 'Something went wrong. Try again.' });
         }
 
@@ -63,6 +62,7 @@ app.post('/register', (req, res) => {
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.render('register', { error: 'That email is already registered.' });
                 }
+                console.error("Error registering user:", err);
                 return res.render('register', { error: 'Something went wrong. Try again.' });
             }
             res.redirect('/login');
@@ -78,7 +78,11 @@ app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
     pool.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
-        if (err || results.length === 0) {
+        if (err) {
+            console.error("Error logging in:", err);
+            return res.render('login', { error: 'Invalid email or password.' });
+        }
+        if (results.length === 0) {
             return res.render('login', { error: 'Invalid email or password.' });
         }
 
@@ -328,6 +332,61 @@ app.post('/admin/remove-student', (req, res) => {
             return res.json({ success: false });
         }
         res.json({ success: true });
+    });
+});
+
+app.post('/admin/edit-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).json({ success: false });
+    }
+
+    const { studentId, student_name, class_id, image } = req.body;
+
+    if (!studentId || !student_name || !class_id) {
+        return res.status(400).json({ success: false, message: "Missing fields" });
+    }
+
+    const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
+
+    const sql = "UPDATE student SET student_name = ?, class_id = ?, image = ? WHERE student_id = ?;";
+    pool.query(sql, [student_name, class_id, photoPath, studentId], (err, result) => {
+        if (err) {
+            console.error("Error editing student:", err);
+            return res.status(500).json({ success: false });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.get('/students/:id', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    const studentId = req.params.id;
+
+    pool.query('SELECT * FROM student WHERE student_id = ?', [studentId], (err, studentResults) => {
+        if (err) {
+            console.error("Error fetching student:", err);
+            return res.status(500).send("Database error.");
+        }
+
+        if (studentResults.length === 0) {
+            return res.status(404).send("Student not found.");
+        }
+
+        pool.query('SELECT * FROM attendance_records WHERE student_id = ?', [studentId], (err, attendanceResults) => {
+            if (err) {
+                console.error("Error fetching attendance records:", err);
+                return res.status(500).send("Database error.");
+            }
+
+            res.render('show', {
+                student: studentResults[0],
+                attendanceRecords: attendanceResults,
+                user: req.session.user
+            });
+        });
     });
 });
 
