@@ -178,7 +178,7 @@ app.get('/classes', (req, res) => {
                 return res.status(500).send("Database error.");
             }
 
-            res.render('classes', {
+            res.render('filtering', {
                 students: studentRows,
                 classes: classes,
                 selectedClass: selectedClass,
@@ -258,7 +258,7 @@ app.get('/edit-attendance', (req, res) => {
             }
         });
 
-        res.render('edit-attendance', { 
+        res.render('organizing', { 
             students: allStudents,
             groups: groups,
             user: req.session ? req.session.user : null
@@ -269,6 +269,38 @@ app.get('/edit-attendance', (req, res) => {
 // ================================
 // Update Attendance (Teacher)
 // ================================
+
+app.get('/attendance', (req, res) => {
+    // 1. Check authentication
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    // 2. Query attendance records with student and class details
+    const sql = `
+        SELECT 
+            a.attendance_id,
+            a.student_id,
+            s.student_name,
+            s.class_id,
+            a.status,
+            a.remarks,
+            a.module_slot
+        FROM attendance_records a
+        JOIN students s ON a.student_id = s.student_id
+    `;
+
+    pool.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database Error");
+        }
+
+        // 3. Render attendance.ejs and pass student data
+        res.render('attendance', { students: results });
+    });
+});
+
 app.post('/attendance/update/:attendance_id', (req, res) => {
     if (!req.session.user) {
         return res.redirect('/login');
