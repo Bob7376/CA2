@@ -205,46 +205,6 @@ app.get('/classes', (req, res) => {
     });
 });
 
-// Student Details Route //
-app.get('/students/:studentId', requireLogin, (req, res) => {
-    const studentId = req.params.studentId;
-
-    const studentSql = `SELECT * FROM student WHERE student_id = ?`;
-    const attendanceSql = `
-        SELECT *
-        FROM attendance_records
-        WHERE student_id = ?
-        ORDER BY session DESC;
-    `;
-
-    pool.query(studentSql, [studentId], (err, studentRows) => {
-        if (err) {
-            console.error("Error fetching student info:", err);
-            return res.status(500).send("Database error.");
-        }
-
-        if (studentRows.length === 0) {
-            return res.status(404).send("Student not found.");
-        }
-
-        const student = studentRows[0];
-
-        pool.query(attendanceSql, [studentId], (err, attendanceRows) => {
-            if (err) {
-                console.error("Error fetching attendance records:", err);
-                return res.status(500).send("Database error.");
-            }
-
-            res.render('show', {
-                student,
-                attendanceRecords: attendanceRows,
-                user: req.session.user
-            });
-        });
-    });
-});
-// Student Details Route //
-
 app.get('/edit-attendance', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') {
         return res.status(403).send("Access denied.");
@@ -282,6 +242,43 @@ app.get('/edit-attendance', (req, res) => {
             user: req.session ? req.session.user : null
         }); 
     });
+});
+
+// ================================
+// Update Attendance (Teacher)
+// ================================
+app.post('/attendance/update/:attendance_id', (req, res) => {
+
+    // Check login
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    // Only teachers can update attendance
+    if (req.session.user.role !== 'teacher') {
+        return res.status(403).send("Access denied.");
+    }
+
+    const attendanceId = req.params.attendance_id;
+    const { status, remarks } = req.body;
+
+    const sql = `
+        UPDATE attendance_records
+        SET status = ?, remarks = ?
+        WHERE attendance_id = ?;
+    `;
+
+    pool.query(sql, [status, remarks, attendanceId], (err, result) => {
+
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database Error");
+        }
+
+        res.redirect('/attendance');
+
+    });
+
 });
 
 app.post('/admin/assign-group', (req, res) => {
