@@ -1,16 +1,14 @@
-require('dotenv').config();// keeps the password in a .env file out of the code 
+require('dotenv').config(); // keeps the password in a .env file out of the code 
 const express = require('express'); // the web server 
 const session = require('express-session'); // remembers who logged in 
 const mysql = require('mysql2'); // talks to the database 
 const bcrypt = require('bcrypt'); // hash the passwords for security 
 
-
 const app = express(); 
 app.set('view engine', 'ejs');
-app.use(express.urlencoded({extended: true})); // lets the server read what the users type into forms 
+app.use(express.urlencoded({ extended: true })); // lets the server read what the users type into forms 
 app.use(express.static('public'));
-// Add this line to parse incoming JSON request bodies
-app.use(express.json());
+app.use(express.json()); // Add this line to parse incoming JSON request bodies
 
 const sessionSecret = process.env.SESSION_SECRET || 'development-only-session-secret';
 
@@ -23,26 +21,23 @@ if (!process.env.DB_NAME) {
 }
 
 app.use(session({
-
     secret: sessionSecret,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: { secure: false } // Set to true if using HTTPS, false for local
 }));
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  
-  ssl: {
-    rejectUnauthorized: false
-  }
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT,
+    
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
-
-
-
 
 app.get('/', (req, res) => {
     res.redirect('/register');
@@ -111,12 +106,10 @@ app.get('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/login'));
 });
 
-
 app.get('/search', (req, res) => {
-const searchTerm = req.query.query || '';
+    const searchTerm = req.query.query || '';
 
-
-const sql = `
+    const sql = `
       SELECT 
         s.student_id, 
         s.student_name, 
@@ -130,7 +123,6 @@ const sql = `
       WHERE s.student_name LIKE ? OR s.student_id LIKE ?;
     `;
 
-
     const queryValue = `%${searchTerm}%`;
 
     pool.query(sql, [queryValue, queryValue], (err, results) => {
@@ -139,8 +131,7 @@ const sql = `
             return res.status(500).send("Database error occurred.");
         }
 
-
-       res.render('search', { 
+        res.render('search', { 
             students: results, 
             user: req.session.user 
         });
@@ -148,7 +139,6 @@ const sql = `
 });
 
 app.get('/classes', (req, res) => {
-
     if (!req.session.user) {
         return res.redirect('/login');
     }
@@ -162,9 +152,7 @@ app.get('/classes', (req, res) => {
             return res.status(500).send("Database error.");
         }
 
-        
         const classes = classRows.map(row => row.class_id);
-
 
         let studentSql = `
             SELECT s.student_id, s.student_name, s.class_id, s.image, a.status, a.remarks, a.session
@@ -184,13 +172,52 @@ app.get('/classes', (req, res) => {
                 return res.status(500).send("Database error.");
             }
 
-            
             res.render('classes', {
                 students: studentRows,
                 classes: classes,
                 selectedClass: selectedClass,
                 user: req.session.user 
             });
+        });
+    });
+});
+
+// ================================
+// Teacher Attendance Page
+// ================================
+app.get('/attendance', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    if (req.session.user.role !== 'teacher') {
+        return res.status(403).send("Access denied.");
+    }
+
+    const sql = `
+        SELECT
+            a.attendance_id,
+            s.student_id,
+            s.student_name,
+            s.class_id,
+            a.status,
+            a.remarks,
+            a.module_slot
+        FROM attendance_records a
+        INNER JOIN student s
+            ON a.student_id = s.student_id
+        ORDER BY s.student_name ASC;
+    `;
+
+    pool.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database Error");
+        }
+
+        res.render('attendance', {
+            students: results,
+            user: req.session.user
         });
     });
 });
@@ -215,7 +242,6 @@ app.get('/edit-attendance', (req, res) => {
 
         const allStudents = results;
 
-        
         const groups = {};
         results.forEach(student => {
             if (student.module_slot) {
@@ -234,6 +260,37 @@ app.get('/edit-attendance', (req, res) => {
     });
 });
 
+// ================================
+// Update Attendance (Teacher)
+// ================================
+app.post('/attendance/update/:attendance_id', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    if (req.session.user.role !== 'teacher') {
+        return res.status(403).send("Access denied.");
+    }
+
+    const attendanceId = req.params.attendance_id;
+    const { status, remarks } = req.body;
+
+    const sql = `
+        UPDATE attendance_records
+        SET status = ?, remarks = ?
+        WHERE attendance_id = ?;
+    `;
+
+    pool.query(sql, [status, remarks, attendanceId], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Database Error");
+        }
+
+        res.redirect('/attendance');
+    });
+});
+
 app.post('/admin/assign-group', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') {
         return res.status(403).json({ success: false });
@@ -245,7 +302,6 @@ app.post('/admin/assign-group', (req, res) => {
         return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    // Update the group_name for all selected student IDs
     const sql = "UPDATE student SET group_name = ? WHERE student_id IN (?);";
     
     pool.query(sql, [groupName, studentIds], (err, result) => {
@@ -272,4 +328,63 @@ app.post('/admin/remove-student', (req, res) => {
         res.json({ success: true });
     });
 });
+
+app.get('/add-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Access denied.");
+    }
+
+    res.render('add-new-info', {
+        user: req.session.user,
+        error: null,
+        success: null
+    });
+});
+
+app.post('/add-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Access denied.");
+    }
+
+    const { student_id, student_name, class_id, image } = req.body;
+
+    if (!student_id || !student_name || !class_id) {
+        return res.render('add-new-info', {
+            user: req.session.user,
+            error: 'Student ID, Name, and Class are required.',
+            success: null
+        });
+    }
+
+    const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
+
+    const sql = 'INSERT INTO student (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
+
+    pool.query(sql, [student_id, student_name, class_id, photoPath], (err) => {
+        if (err) {
+            console.error("Error adding student:", err);
+
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.render('add-new-info', {
+                    user: req.session.user,
+                    error: 'A student with that ID already exists.',
+                    success: null
+                });
+            }
+
+            return res.render('add-new-info', {
+                user: req.session.user,
+                error: 'Something went wrong. Try again.',
+                success: null
+            });
+        }
+
+        res.render('add-new-info', {
+            user: req.session.user,
+            error: null,
+            success: `Student "${student_name}" (${student_id}) was added successfully.`
+        });
+    });
+});
+
 app.listen(3000, () => console.log('Running on http://localhost:3000'));
