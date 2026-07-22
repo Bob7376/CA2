@@ -52,12 +52,14 @@ app.post('/register', (req, res) => {
 
     bcrypt.hash(password, 10, (err, hashedPassword) => {
         if (err) {
+            console.error("BCRYPT ERROR:", err); // <-- Added log here
             return res.render('register', { error: 'Something went wrong. Try again.' });
         }
 
         const sql = 'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)';
         pool.query(sql, [name, email, hashedPassword, role], (err) => {
             if (err) {
+                console.error("DATABASE REGISTER ERROR:", err); // <-- Added log here
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.render('register', { error: 'That email is already registered.' });
                 }
