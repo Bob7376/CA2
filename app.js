@@ -52,6 +52,7 @@ app.post('/register', (req, res) => {
 
     bcrypt.hash(password, 10, (err, hashedPassword) => {
         if (err) {
+            console.error("Error hashing password:", err);
             return res.render('register', { error: 'Something went wrong. Try again.' });
         }
 
@@ -61,6 +62,7 @@ app.post('/register', (req, res) => {
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.render('register', { error: 'That email is already registered.' });
                 }
+                console.error("Error registering user:", err);
                 return res.render('register', { error: 'Something went wrong. Try again.' });
             }
             res.redirect('/login');
@@ -76,7 +78,11 @@ app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
     pool.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
-        if (err || results.length === 0) {
+        if (err) {
+            console.error("Error logging in:", err);
+            return res.render('login', { error: 'Invalid email or password.' });
+        }
+        if (results.length === 0) {
             return res.render('login', { error: 'Invalid email or password.' });
         }
 
