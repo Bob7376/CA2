@@ -17,7 +17,6 @@
 <% } else if (user && user.role === 'teacher') { %>
     <div class="navbar-nav d-flex flex-row gap-3">
       <a class="nav-link" href="/dashboard">Home</a>
-      <a class="nav-link" href="/add-student">Add Student</a>
       <a class="nav-link" href="/classes">Attendance Record</a>
         <form action="/search" method="GET" class="d-flex" style="max-width: 250px;">
             <input class="form-control me-2" type="search" name="query" placeholder="Search student name..." aria-label="Search">

@@ -329,6 +329,38 @@ app.post('/admin/remove-student', (req, res) => {
     });
 });
 
+app.get('/students/:id', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    const studentId = req.params.id;
+
+    pool.query('SELECT * FROM student WHERE student_id = ?', [studentId], (err, studentResults) => {
+        if (err) {
+            console.error("Error fetching student:", err);
+            return res.status(500).send("Database error.");
+        }
+
+        if (studentResults.length === 0) {
+            return res.status(404).send("Student not found.");
+        }
+
+        pool.query('SELECT * FROM attendance_records WHERE student_id = ?', [studentId], (err, attendanceResults) => {
+            if (err) {
+                console.error("Error fetching attendance records:", err);
+                return res.status(500).send("Database error.");
+            }
+
+            res.render('show', {
+                student: studentResults[0],
+                attendanceRecords: attendanceResults,
+                user: req.session.user
+            });
+        });
+    });
+});
+
 app.get('/add-student', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') {
         return res.status(403).send("Access denied.");
