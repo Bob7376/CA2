@@ -29,23 +29,6 @@ app.use(session({
     saveUninitialized: false
 }));
 
-
-const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    ssl: { rejectUnauthorized: true },
-    ...(process.env.DB_NAME ? { database: process.env.DB_NAME } : {})
-});
-
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // Set to true if using HTTPS, false for local
-}));
-
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -78,7 +61,7 @@ app.post('/register', (req, res) => {
         }
 
         const sql = 'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)';
-pool.query(sql, [name, email, hashedPassword, role], (err) => {
+        pool.query(sql, [name, email, hashedPassword, role], (err) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') {
                     return res.render('register', { error: 'That email is already registered.' });
@@ -218,10 +201,10 @@ app.get('/edit-attendance', (req, res) => {
     }
 
     const query = `
-        SELECT s.student_id, s.student_name, s.class_id, a.module_slot 
+        SELECT s.student_id, s.student_name, s.class_id, s.group_name, a.module_slot
         FROM student s
         LEFT JOIN attendance_records a ON s.student_id = a.student_id
-        ORDER BY s.student_name ASC;
+        ORDER BY s.group_name ASC, s.student_name ASC;
     `;
 
     pool.query(query, (err, results) => {
@@ -274,6 +257,19 @@ app.post('/admin/assign-group', (req, res) => {
     });
 });
 
+app.post('/admin/remove-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).json({ success: false });
+    }
+    const { studentId } = req.body;
 
-
+    const sql = "DELETE FROM student WHERE student_id = ?;";
+    pool.query(sql, [studentId], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.json({ success: false });
+        }
+        res.json({ success: true });
+    });
+});
 app.listen(3000, () => console.log('Running on http://localhost:3000'));

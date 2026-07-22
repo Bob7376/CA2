@@ -1,0 +1,26 @@
+.auth-background{
+    background-image: url('/images2/republic.jpg');   
+ background-size: cover;    background-position: center;  
+ background-repeat: no-repeat;    min-height: 100vh;}
+
+
+ .green-button {    background-color: #0f3c22;    border-color: #0f3c22;    color: white;}
+
+
+ .home-background{
+    background-image: url('/images2/forest.webp');   
+ background-size: cover;    background-position: center;  
+ background-repeat: no-repeat;    min-height: 100vh;}
+
+ 
+ .search-background{
+    background-image: url('/images2/search.jpg');   
+ background-size: cover;    background-position: center;  
+ background-repeat: no-repeat;    min-height: 100vh;}
+
+ .navbar {    background-color: #0f3c22 !important;}  
+ 
+ .search-title {    color: rgb(255, 255, 255);    font-size: 3rem;  font-weight: 700;}
+
+
+ .dark-green-header {    background-color: #0f3c22 !important;    color: white !important;}
