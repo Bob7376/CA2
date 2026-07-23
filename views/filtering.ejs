@@ -43,7 +43,7 @@
                                 <th style="width: 12%;">Class</th>
                                 <th style="width: 12%;">Status</th>
                                 <th style="width: 12%;">Remarks</th>
-                                <th style="width: 12%;">Session</th>
+                                <th style="width: 12%;">Module Slot</th>
                                 <th style="width: 12%;">Details</th>
                                 <% if (user && user.role === 'admin') { %>
                                     <th style="width: 16%;">Actions</th>
@@ -80,7 +80,7 @@
                                         <%= student.remarks || '-' %>
                                     </td>
                                     <td class="text-muted small">
-                                        <%= student.session || '-' %>
+                                        <%= student.module_slot || '-' %>
                                     </td>
                                     <td>
                                         <a href="/students/<%= student.student_id %>" class="btn btn-sm btn-primary">
@@ -93,6 +93,7 @@
                                                 data-id="<%= student.student_id %>"
                                                 data-name="<%= student.student_name %>"
                                                 data-class="<%= student.class_id %>"
+                                                data-module-slot="<%= student.module_slot || '' %>"
                                                 data-image="<%= student.image || '' %>">
                                                 Edit
                                             </button>
