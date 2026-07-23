@@ -59,7 +59,7 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th scope="col">Session</th>
+                                        <th scope="col">Module Slot</th>
                                         <th scope="col">Module</th>
                                         <th scope="col">Date</th>
                                         <th scope="col">Time</th>
@@ -70,7 +70,7 @@
                                 <tbody>
                                     <% attendanceRecords.forEach(record => { %>
                                         <tr>
-                                            <td><%= record.session || '-' %></td>
+                                            <td><%= record.module_slot || '-' %></td>
                                             <td><%= record.module_id || '-' %></td>
                                             <td><%= record.date || '-' %></td>
                                             <td><%= record.time || '-' %></td>
