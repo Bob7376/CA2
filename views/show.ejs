@@ -13,91 +13,144 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3">Student Information</h1>
-            <p class="text-muted mb-0">Detailed profile and attendance record for <strong><%= student.student_name %></strong>.</p>
+            <p class="text-muted mb-0">
+                Detailed profile and attendance record for
+                <strong><%= student.student_name %></strong>.
+            </p>
         </div>
         <a href="/classes" class="btn btn-outline-secondary">Back to Classes</a>
     </div>
 
     <div class="row g-4">
+
         <div class="col-lg-4">
             <div class="card shadow-sm">
                 <div class="card-body text-center">
+
                     <% if (student.image) { %>
-                        <img src="/<%= student.image %>" alt="<%= student.student_name %>" class="rounded-circle img-fluid mb-3" style="width: 160px; height: 160px; object-fit: cover;">
+                        <img src="/<%= student.image %>"
+                             alt="<%= student.student_name %>"
+                             class="rounded-circle img-fluid mb-3"
+                             style="width:160px; height:160px; object-fit:cover;">
                     <% } else { %>
-                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mb-3" style="width: 160px; height: 160px; font-size: 4rem;">
+                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mb-3"
+                             style="width:160px; height:160px; font-size:4rem;">
                             <%= student.student_name.charAt(0) %>
                         </div>
                     <% } %>
 
                     <h4 class="card-title mb-1"><%= student.student_name %></h4>
-                    <p class="text-muted mb-3">ID: <strong><%= student.student_id %></strong></p>
+                    <p class="text-muted mb-3">
+                        ID: <strong><%= student.student_id %></strong>
+                    </p>
 
                     <div class="list-group text-start">
                         <div class="list-group-item">
-                            <strong>Class:</strong> <span class="ms-2"><%= student.class_id || '-' %></span>
+                            <strong>Class:</strong>
+                            <span class="ms-2"><%= student.class_id || '-' %></span>
                         </div>
+
                         <div class="list-group-item">
-                            <strong>Group:</strong> <span class="ms-2"><%= student.group_name || '-' %></span>
+                            <strong>Group:</strong>
+                            <span class="ms-2"><%= student.group_name || '-' %></span>
                         </div>
+
                         <div class="list-group-item">
-                            <strong>Image Path:</strong> <span class="ms-2"><%= student.image || '-' %></span>
+                            <strong>Image Path:</strong>
+                            <span class="ms-2"><%= student.image || '-' %></span>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
 
         <div class="col-lg-8">
             <div class="card shadow-sm">
+
                 <div class="card-header bg-white">
                     <h5 class="mb-0">Attendance History</h5>
                 </div>
+
                 <div class="card-body p-0">
+
                     <% if (attendanceRecords && attendanceRecords.length > 0) { %>
+
                         <div class="table-responsive">
+
                             <table class="table table-hover mb-0">
+
                                 <thead class="table-light">
                                     <tr>
-                                        <th scope="col">Module Slot</th>
-                                        <th scope="col">Module</th>
-                                        <th scope="col">Date</th>
-                                        <th scope="col">Time</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Remarks</th>
+                                        <th>Module Slot</th>
+                                        <th>Module</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Status</th>
+                                        <th>Remarks</th>
                                     </tr>
                                 </thead>
+
                                 <tbody>
+
                                     <% attendanceRecords.forEach(record => { %>
+
                                         <tr>
+
                                             <td><%= record.module_slot || '-' %></td>
+
                                             <td><%= record.module_id || '-' %></td>
+
                                             <td><%= record.date || '-' %></td>
+
                                             <td><%= record.time || '-' %></td>
+
                                             <td>
                                                 <% if (record.status === 'Present') { %>
                                                     <span class="badge bg-success">Present</span>
+
                                                 <% } else if (record.status === 'Absent') { %>
                                                     <span class="badge bg-danger">Absent</span>
+
+                                                <% } else if (record.status === 'Late') { %>
+                                                    <span class="badge bg-warning text-dark">Late</span>
+
                                                 <% } else { %>
-                                                    <span class="badge bg-secondary">Unknown</span>
+                                                    <span class="badge bg-secondary">
+                                                        <%= record.status || 'Unknown' %>
+                                                    </span>
                                                 <% } %>
                                             </td>
+
                                             <td><%= record.remarks || '-' %></td>
+
                                         </tr>
+
                                     <% }) %>
+
                                 </tbody>
+
                             </table>
+
                         </div>
+
                     <% } else { %>
+
                         <div class="p-4 text-center text-muted">
-                            <p class="mb-0">No attendance records were found for this student.</p>
+                            <p class="mb-0">
+                                No attendance records were found for this student.
+                            </p>
                         </div>
+
                     <% } %>
+
                 </div>
+
             </div>
         </div>
+
     </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
