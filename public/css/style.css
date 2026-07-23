@@ -6,6 +6,7 @@
 
  .green-button {    background-color: #0f3c22;    border-color: #0f3c22;    color: white;}
 
+ .white-button {   color: white;   border-color: white;}
 
  .home-background{
     background-image: url('/images2/forest.webp');   
