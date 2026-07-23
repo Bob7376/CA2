@@ -161,7 +161,7 @@ app.get('/classes', (req, res) => {
         const classes = classRows.map(row => row.class_id);
 
         let studentSql = `
-            SELECT s.student_id, s.student_name, s.class_id, s.image, a.status, a.remarks, a.session
+            SELECT s.student_id, s.student_name, s.class_id, s.image, a.status, a.remarks, a.module_slot
             FROM student s
             LEFT JOIN attendance_records a ON s.student_id = a.student_id
         `;
