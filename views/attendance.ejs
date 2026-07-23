@@ -25,7 +25,6 @@
                 Teacher Portal
             </span>
         </div>
-
     </div>
 
     <div class="card shadow">
@@ -65,102 +64,30 @@
                         <% students.forEach(function(student){ %>
 
                         <tr>
-
-                            <form action="/attendance/update/<%= student.attendance_id %>" method="POST">
-
+                            <td><strong><%= student.student_id %></strong></td>
+                            <td><%= student.student_name %></td>
+                            <td><span class="badge bg-secondary"><%= student.class_id %></span></td>
+  
+                            <form action="/attendance/update/<%= student.attendance_id || student.student_id %>" method="POST">
                                 <td>
-
-                                    <strong>
-
-                                        <%= student.student_id %>
-
-                                    </strong>
-
-                                </td>
-
-                                <td>
-
-                                    <%= student.student_name %>
-
-                                </td>
-
-                                <td>
-
-                                    <span class="badge bg-secondary">
-
-                                        <%= student.class_id %>
-
-                                    </span>
-
-                                </td>
-
-                                <td>
-
-                                    <select
-                                        name="status"
-                                        class="form-select">
-
-                                        <option value="Present"
-
-                                        <%= student.status==="Present" ? "selected" : "" %>>
-
-                                            Present
-
-                                        </option>
-
-                                        <option value="Absent"
-
-                                        <%= student.status==="Absent" ? "selected" : "" %>>
-
-                                            Absent
-
-                                        </option>
-
-                                        <option value="Late"
-
-                                        <%= student.status==="Late" ? "selected" : "" %>>
-
-                                            Late
-
-                                        </option>
-
+                                    <select name="status" class="form-select form-select-sm">
+                                        <option value="Present" <%= student.status === "Present" ? "selected" : "" %>>Present</option>
+                                        <option value="Absent" <%= student.status === "Absent" ? "selected" : "" %>>Absent</option>
+                                        <option value="Late" <%= student.status === "Late" ? "selected" : "" %>>Late</option>
                                     </select>
-
                                 </td>
-
                                 <td>
-
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        name="remarks"
-                                        value="<%= student.remarks || '' %>">
-                                                                        </td>
-
-                                <td>
-
-                                    <%= student.module_slot || '-' %>
-
+                                <input type="text" class="form-control form-control-sm" name="remarks" value="<%= student.remarks || '' %>">
                                 </td>
-
                                 <td>
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-success btn-sm">
-
-                                        Save
-
-                                    </button>
-
+                                    <%= student.module_slot || student.slot || '-' %>
                                 </td>
-
+                                <td>
+                                <button type="submit" class="btn btn-success btn-sm">Save</button>
+                                </td>
                             </form>
-
                         </tr>
-
-                        <% }) %>
-
+                    <% }) %>
                     </tbody>
 
                 </table>

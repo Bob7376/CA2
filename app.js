@@ -247,30 +247,27 @@ app.get('/attendance', (req, res) => {
     }
 
     const sql = `
-    SELECT
-        s.student_id,
-        s.student_name,
-        s.class_id,
-        a.attendance_id,
-        COALESCE(a.status, 'Absent') AS status, -- or default status/NULL
-        a.remarks,
-        a.module_slot
-    FROM student s
-    LEFT JOIN attendance_records a
-        ON s.student_id = a.student_id
-        AND a.date = CURDATE() -- Optional: filter attendance to today's date
-    ORDER BY s.student_name ASC;
-`;
-
-    pool.query(sql, (err, results) => {
+        SELECT 
+            s.student_id, 
+            s.student_name, 
+            s.class_id, 
+            s.module_slot,
+            a.attendance_id,
+            a.status, 
+            a.remarks 
+        FROM student s
+        LEFT JOIN attendance_records a ON s.student_id = a.student_id
+    `;
+    
+    pool.query(sql, (err, students) => {
         if (err) {
-            console.error(err);
-            return res.status(500).send("Database Error");
+            console.error('Error fetching attendance records:', err);
+            return res.status(500).send('Database Error');
         }
 
         res.render('attendance', {
-            students: results,
-            user: req.session.user
+            students: students, // <-- Fixed (matches callback variable)
+            user: req.session ? req.session.user : null
         });
     });
 });
@@ -523,5 +520,6 @@ app.post('/add-student', (req, res) => {
         renderForm(null, `Student ${student_name} added successfully!`);
     });
 });
+
 
 app.listen(3000, () => console.log('Running on http://localhost:3000'));
