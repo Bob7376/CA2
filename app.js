@@ -113,6 +113,10 @@ app.get('/logout', (req, res) => {
 });
 
 app.get('/search', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
     const searchTerm = req.query.query || '';
 
     const sql = `
@@ -269,38 +273,6 @@ app.get('/edit-attendance', (req, res) => {
 // ================================
 // Update Attendance (Teacher)
 // ================================
-
-app.get('/attendance', (req, res) => {
-    // 1. Check authentication
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-
-    // 2. Query attendance records with student and class details
-    const sql = `
-        SELECT 
-            a.attendance_id,
-            a.student_id,
-            s.student_name,
-            s.class_id,
-            a.status,
-            a.remarks,
-            a.module_slot
-        FROM attendance_records a
-        JOIN students s ON a.student_id = s.student_id
-    `;
-
-    pool.query(sql, (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send("Database Error");
-        }
-
-        // 3. Render attendance.ejs and pass student data
-        res.render('attendance', { students: results });
-    });
-});
-
 app.post('/attendance/update/:attendance_id', (req, res) => {
     if (!req.session.user) {
         return res.redirect('/login');
@@ -422,15 +394,30 @@ app.get('/students/:id', (req, res) => {
     });
 });
 
+function getClassList(callback) {
+    pool.query("SELECT class_id FROM class ORDER BY class_id;", (err, rows) => {
+        if (err) return callback(err);
+        callback(null, rows.map(row => row.class_id));
+    });
+}
+
 app.get('/add-student', (req, res) => {
     if (!req.session.user || req.session.user.role !== 'admin') {
         return res.status(403).send("Access denied.");
     }
 
-    res.render('add-new-info', {
-        user: req.session.user,
-        error: null,
-        success: null
+    getClassList((err, classes) => {
+        if (err) {
+            console.error("Error fetching class list:", err);
+            return res.status(500).send("Database error.");
+        }
+
+        res.render('add-new-info', {
+            user: req.session.user,
+            classes: classes,
+            error: null,
+            success: null
+        });
     });
 });
 
@@ -441,41 +428,61 @@ app.post('/add-student', (req, res) => {
 
     const { student_id, student_name, class_id, image } = req.body;
 
-    if (!student_id || !student_name || !class_id) {
-        return res.render('add-new-info', {
-            user: req.session.user,
-            error: 'Student ID, Name, and Class are required.',
-            success: null
-        });
-    }
-
-    const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
-
-    const sql = 'INSERT INTO student (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
-
-    pool.query(sql, [student_id, student_name, class_id, photoPath], (err) => {
+    getClassList((err, classes) => {
         if (err) {
-            console.error("Error adding student:", err);
+            console.error("Error fetching class list:", err);
+            return res.status(500).send("Database error.");
+        }
 
-            if (err.code === 'ER_DUP_ENTRY') {
-                return res.render('add-new-info', {
-                    user: req.session.user,
-                    error: 'A student with that ID already exists.',
-                    success: null
-                });
-            }
-
+        if (!student_id || !student_name || !class_id) {
             return res.render('add-new-info', {
                 user: req.session.user,
-                error: 'Something went wrong. Try again.',
+                classes: classes,
+                error: 'Student ID, Name, and Class are required.',
                 success: null
             });
         }
 
-        res.render('add-new-info', {
-            user: req.session.user,
-            error: null,
-            success: `Student "${student_name}" (${student_id}) was added successfully.`
+        const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
+
+        const sql = 'INSERT INTO student (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
+
+        pool.query(sql, [student_id, student_name, class_id, photoPath], (err) => {
+            if (err) {
+                console.error("Error adding student:", err);
+
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.render('add-new-info', {
+                        user: req.session.user,
+                        classes: classes,
+                        error: 'A student with that ID already exists.',
+                        success: null
+                    });
+                }
+
+                if (err.code === 'ER_NO_REFERENCED_ROW_2') {
+                    return res.render('add-new-info', {
+                        user: req.session.user,
+                        classes: classes,
+                        error: 'That class does not exist. Please pick one from the list.',
+                        success: null
+                    });
+                }
+
+                return res.render('add-new-info', {
+                    user: req.session.user,
+                    classes: classes,
+                    error: 'Something went wrong. Try again.',
+                    success: null
+                });
+            }
+
+            res.render('add-new-info', {
+                user: req.session.user,
+                classes: classes,
+                error: null,
+                success: `Student "${student_name}" (${student_id}) was added successfully.`
+            });
         });
     });
 });
