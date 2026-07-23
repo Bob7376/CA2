@@ -46,6 +46,17 @@
                             </select>
                         </div>
                         <div class="mb-3">
+                            <label for="module_slot" class="form-label">Module Slot</label>
+                            <select name="module_slot" id="module_slot" class="form-select" required>
+                                <option value="" disabled selected>Select a module slot</option>
+                                <% if (locals.moduleSlots && moduleSlots.length > 0) { %>
+                                    <% moduleSlots.forEach(function(slot) { %>
+                                        <option value="<%= slot.module_slot %>"><%= slot.module_slot %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Photo Path <span class="text-muted">(optional)</span></label>
                             <input type="text" name="image" class="form-control" placeholder="e.g. uploads/jane.png">
                             <div class="form-text">Leave blank to use the default placeholder image.</div>

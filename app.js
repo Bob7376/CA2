@@ -39,6 +39,28 @@ const pool = mysql.createPool({
     }
 });
 
+function getClassList(callback) {
+    const sql = `SELECT * FROM class;`; // or your class query
+    pool.query(sql, (err, results) => {
+        if (err) return callback(err, null);
+        callback(null, results);
+    });
+}
+
+
+function getModuleSlots(callback) {
+    const sql = `
+        SELECT DISTINCT module_slot 
+        FROM attendance_records 
+        WHERE module_slot IS NOT NULL AND module_slot != ''
+        ORDER BY module_slot ASC;
+    `;
+    pool.query(sql, (err, results) => {
+        if (err) return callback(err, null);
+        callback(null, results);
+    });
+}
+
 app.get('/', (req, res) => {
     res.redirect('/register');
 });
@@ -118,7 +140,7 @@ app.get('/search', (req, res) => {
     }
 
     const searchTerm = req.query.query || '';
-
+    
     const sql = `
       SELECT 
         s.student_id, 
@@ -128,8 +150,8 @@ app.get('/search', (req, res) => {
         a.status, 
         a.remarks,
         a.module_slot
-      FROM attendance_records a
-      INNER JOIN student s ON a.student_id = s.student_id
+      FROM student s
+      LEFT JOIN attendance_records a ON s.student_id = a.student_id
       WHERE s.student_name LIKE ? OR s.student_id LIKE ?;
     `;
 
@@ -165,7 +187,14 @@ app.get('/classes', (req, res) => {
         const classes = classRows.map(row => row.class_id);
 
         let studentSql = `
-            SELECT s.student_id, s.student_name, s.class_id, s.image, a.status, a.remarks, a.module_slot
+            SELECT 
+                s.student_id, 
+                s.student_name, 
+                s.class_id, 
+                s.image, 
+                a.status, 
+                a.remarks, 
+                COALESCE(NULLIF(s.module_slot, ''), NULLIF(a.module_slot, '')) AS module_slot
             FROM student s
             LEFT JOIN attendance_records a ON s.student_id = a.student_id
         `;
@@ -175,6 +204,19 @@ app.get('/classes', (req, res) => {
             studentSql += " WHERE s.class_id = ?";
             queryParams.push(selectedClass);
         }
+
+        studentSql += ` 
+            GROUP BY 
+                s.student_id, 
+                s.student_name, 
+                s.class_id, 
+                s.image, 
+                s.module_slot,
+                a.status, 
+                a.remarks, 
+                a.module_slot
+            ORDER BY s.student_id ASC;
+        `;
 
         pool.query(studentSql, queryParams, (err, studentRows) => {
             if (err) {
@@ -205,19 +247,20 @@ app.get('/attendance', (req, res) => {
     }
 
     const sql = `
-        SELECT
-            a.attendance_id,
-            s.student_id,
-            s.student_name,
-            s.class_id,
-            a.status,
-            a.remarks,
-            a.module_slot
-        FROM attendance_records a
-        INNER JOIN student s
-            ON a.student_id = s.student_id
-        ORDER BY s.student_name ASC;
-    `;
+    SELECT
+        s.student_id,
+        s.student_name,
+        s.class_id,
+        a.attendance_id,
+        COALESCE(a.status, 'Absent') AS status, -- or default status/NULL
+        a.remarks,
+        a.module_slot
+    FROM student s
+    LEFT JOIN attendance_records a
+        ON s.student_id = a.student_id
+        AND a.date = CURDATE() -- Optional: filter attendance to today's date
+    ORDER BY s.student_name ASC;
+`;
 
     pool.query(sql, (err, results) => {
         if (err) {
@@ -237,17 +280,22 @@ app.get('/edit-attendance', (req, res) => {
         return res.status(403).send("Access denied.");
     }
 
-    const query = `
-        SELECT s.student_id, s.student_name, s.class_id, s.group_name, a.module_slot
-        FROM student s
-        LEFT JOIN attendance_records a ON s.student_id = a.student_id
-        ORDER BY s.group_name ASC, s.student_name ASC;
-    `;
+    const sql = `
+    SELECT 
+        s.student_id, 
+        s.student_name, 
+        s.class_id, 
+        s.module_slot
+    FROM student s
+    LEFT JOIN attendance_records ar ON s.student_id = ar.student_id
+    GROUP BY s.student_id
+    ORDER BY s.student_id ASC;
+`;
 
-    pool.query(query, (err, results) => {
+    pool.query(sql, (err, results) => {
         if (err) {
-            console.error("Database Error:", err);
-            return res.status(500).send("Database error.");
+            console.error("EDIT ATTENDANCE DATABASE ERROR:", err.sqlMessage || err);
+            return res.status(500).send("Database error: " + (err.sqlMessage || err.message));
         }
 
         const allStudents = results;
@@ -412,78 +460,67 @@ app.get('/add-student', (req, res) => {
             return res.status(500).send("Database error.");
         }
 
-        res.render('add-new-info', {
-            user: req.session.user,
-            classes: classes,
-            error: null,
-            success: null
-        });
-    });
-});
-
-app.post('/add-student', (req, res) => {
-    if (!req.session.user || req.session.user.role !== 'admin') {
-        return res.status(403).send("Access denied.");
-    }
-
-    const { student_id, student_name, class_id, image } = req.body;
-
-    getClassList((err, classes) => {
-        if (err) {
-            console.error("Error fetching class list:", err);
-            return res.status(500).send("Database error.");
-        }
-
-        if (!student_id || !student_name || !class_id) {
-            return res.render('add-new-info', {
-                user: req.session.user,
-                classes: classes,
-                error: 'Student ID, Name, and Class are required.',
-                success: null
-            });
-        }
-
-        const photoPath = (image && image.trim()) ? image.trim() : 'default.png';
-
-        const sql = 'INSERT INTO student (student_id, student_name, class_id, image) VALUES (?, ?, ?, ?)';
-
-        pool.query(sql, [student_id, student_name, class_id, photoPath], (err) => {
-            if (err) {
-                console.error("Error adding student:", err);
-
-                if (err.code === 'ER_DUP_ENTRY') {
-                    return res.render('add-new-info', {
-                        user: req.session.user,
-                        classes: classes,
-                        error: 'A student with that ID already exists.',
-                        success: null
-                    });
-                }
-
-                if (err.code === 'ER_NO_REFERENCED_ROW_2') {
-                    return res.render('add-new-info', {
-                        user: req.session.user,
-                        classes: classes,
-                        error: 'That class does not exist. Please pick one from the list.',
-                        success: null
-                    });
-                }
-
-                return res.render('add-new-info', {
-                    user: req.session.user,
-                    classes: classes,
-                    error: 'Something went wrong. Try again.',
-                    success: null
-                });
+        getModuleSlots((slotErr, moduleSlots) => {
+            if (slotErr) {
+                console.error("Error fetching module slots:", slotErr);
+                return res.status(500).send("Database error.");
             }
 
             res.render('add-new-info', {
                 user: req.session.user,
                 classes: classes,
+                moduleSlots: moduleSlots, // Array of [{ module_slot: 'Slot 1 ...' }, ...]
                 error: null,
-                success: `Student "${student_name}" (${student_id}) was added successfully.`
+                success: null
             });
         });
+    });
+});
+
+// POST Route: Process student creation
+app.post('/add-student', (req, res) => {
+    if (!req.session.user || req.session.user.role !== 'admin') {
+        return res.status(403).send("Access denied.");
+    }
+
+    const { student_id, student_name, class_id, image, module_slot } = req.body;
+
+    // Helper to re-render the page consistently on success or error
+    const renderForm = (errorMsg, successMsg) => {
+        getClassList((err, classes) => {
+            getModuleSlots((slotErr, moduleSlots) => {
+                res.render('add-new-info', {
+                    user: req.session.user,
+                    classes: classes || [],
+                    moduleSlots: moduleSlots || [], // Always pass objects array from DB
+                    error: errorMsg,
+                    success: successMsg
+                });
+            });
+        });
+    };
+
+
+    if (!student_id || !student_name || !class_id || !module_slot) {
+    return renderForm("All required fields (ID, Name, Class, Module Slot) must be filled.", null);
+    }
+
+    // Convert empty string from input to NULL for MySQL
+    const studentImage = image && image.trim() !== '' ? image : null;
+
+    const sql = `
+        INSERT INTO student (student_id, student_name, class_id, image, module_slot)
+        VALUES (?, ?, ?, ?, ?);
+    `;
+
+    pool.query(sql, [student_id, student_name, class_id, studentImage, module_slot], (err, result) => {
+        if (err) {
+        // Look at your Node terminal output when submitting the form!
+            console.error("EXACT MYSQL ERROR:", err.sqlMessage || err);
+            return renderForm("Failed to add student: " + (err.sqlMessage || "Database error"), null);
+        }
+
+        renderForm(null, `Student ${student_name} added successfully!`);
     });
 });
 

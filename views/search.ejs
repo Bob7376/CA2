@@ -59,8 +59,8 @@
                                             <td class="align-middle"><span class="badge bg-secondary"><%= student.class_id %></span></td>
                                             <td class="align-middle"><span class="badge bg-secondary"><%= student.module_slot || 'N/A' %></span></td>
                                             <td class="align-middle">
-                                                <span class="badge <%= student.status === 'Present' ? 'bg-success' : 'bg-danger' %>">
-                                                    <%= student.status %>
+                                                <span class="badge <%= student.status === 'Present' ? 'bg-success' : (student.status === 'Absent' ? 'bg-danger' : 'bg-warning text-dark') %>">
+                                                    <%= student.status || 'Unmarked' %>
                                                 </span>
                                             </td>
                                             <td class="align-middle text-muted"><%= student.remarks || 'No remarks' %></td>
