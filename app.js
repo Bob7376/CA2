@@ -142,16 +142,17 @@ app.get('/search', (req, res) => {
     const searchTerm = req.query.query || '';
     
     const sql = `
-      SELECT 
-        s.student_id, 
-        s.student_name, 
-        s.class_id, 
-        s.image, 
-        a.status, 
-        a.remarks,
-        a.module_slot
+      SELECT
+        s.student_id,
+        s.student_name,
+        s.class_id,
+        s.image,
+        s.module_slot,
+        COALESCE(a.status, 'Not Marked') AS status,
+        a.remarks
       FROM student s
-      LEFT JOIN attendance_records a ON s.student_id = a.student_id
+      LEFT JOIN attendance_records a
+        ON s.student_id = a.student_id AND a.date = CURDATE()
       WHERE s.student_name LIKE ? OR s.student_id LIKE ?;
     `;
 
@@ -275,26 +276,31 @@ app.get('/attendance', (req, res) => {
 });
 
 app.get('/students/:id', async (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+
   try {
     const studentId = req.params.id;
 
-    
     const [students] = await pool.promise().query(
       'SELECT * FROM student WHERE student_id = ?',
       [studentId]
     );
 
-    
+    if (students.length === 0) {
+      return res.status(404).send('Student not found.');
+    }
+
     const [attendanceRecords] = await pool.promise().query(
       'SELECT * FROM attendance_records WHERE student_id = ? ORDER BY date DESC, time DESC',
       [studentId]
     );
 
-    
     res.render('show', {
       student: students[0],
-      attendanceRecords: attendanceRecords, 
-      user: req.session.user || null
+      attendanceRecords: attendanceRecords,
+      user: req.session.user
     });
 
   } catch (err) {
@@ -435,38 +441,6 @@ app.post('/admin/edit-student', (req, res) => {
             return res.status(500).json({ success: false });
         }
         res.json({ success: true });
-    });
-});
-
-app.get('/students/:id', (req, res) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
-    }
-
-    const studentId = req.params.id;
-
-    pool.query('SELECT * FROM student WHERE student_id = ?', [studentId], (err, studentResults) => {
-        if (err) {
-            console.error("Error fetching student:", err);
-            return res.status(500).send("Database error.");
-        }
-
-        if (studentResults.length === 0) {
-            return res.status(404).send("Student not found.");
-        }
-
-        pool.query('SELECT * FROM attendance_records WHERE student_id = ?', [studentId], (err, attendanceResults) => {
-            if (err) {
-                console.error("Error fetching attendance records:", err);
-                return res.status(500).send("Database error.");
-            }
-
-            res.render('show', {
-                student: studentResults[0],
-                attendanceRecords: attendanceResults,
-                user: req.session.user
-            });
-        });
     });
 });
 
