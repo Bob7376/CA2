@@ -364,23 +364,39 @@ app.post('/attendance/update/:attendance_id', (req, res) => {
         return res.status(403).send("Access denied.");
     }
 
-    const attendanceId = req.params.attendance_id;
+    const studentId = req.body.student_id;
     const { status, remarks } = req.body;
 
-    const sql = `
-        UPDATE attendance_records
-        SET status = ?, remarks = ?
-        WHERE attendance_id = ?;
-    `;
+    pool.query(
+        "SELECT attendance_id FROM attendance_records WHERE student_id = ? AND date = CURDATE()",
+        [studentId],
+        (err, rows) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send("Database Error");
+            }
 
-    pool.query(sql, [status, remarks, attendanceId], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send("Database Error");
+            if (rows.length > 0) {
+                const sql = "UPDATE attendance_records SET status = ?, remarks = ? WHERE attendance_id = ?;";
+                pool.query(sql, [status, remarks, rows[0].attendance_id], (err2) => {
+                    if (err2) {
+                        console.error(err2);
+                        return res.status(500).send("Database Error");
+                    }
+                    res.redirect('/attendance');
+                });
+            } else {
+                const sql = "INSERT INTO attendance_records (student_id, date, time, status, remarks) VALUES (?, CURDATE(), CURTIME(), ?, ?);";
+                pool.query(sql, [studentId, status, remarks], (err2) => {
+                    if (err2) {
+                        console.error(err2);
+                        return res.status(500).send("Database Error");
+                    }
+                    res.redirect('/attendance');
+                });
+            }
         }
-
-        res.redirect('/attendance');
-    });
+    );
 });
 
 app.post('/admin/assign-group', (req, res) => {
