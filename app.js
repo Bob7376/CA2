@@ -238,38 +238,28 @@ app.get('/classes', (req, res) => {
 // Teacher Attendance Page
 // ================================
 app.get('/attendance', (req, res) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
+  if (!req.session.user) return res.redirect('/login');
+  if (req.session.user.role !== 'teacher') return res.status(403).send("Access denied.");
+
+  // Simple LEFT JOIN on student_id only
+  const sql = `
+    SELECT s.student_id, s.student_name, s.class_id, s.module_slot, 
+           a.status, a.remarks
+    FROM student s
+    LEFT JOIN attendance_records a ON s.student_id = a.student_id
+  `;
+
+  pool.query(sql, (err, students) => {
+    if (err) {
+      console.error('Error fetching attendance records:', err);
+      return res.status(500).send('Database Error');
     }
 
-    if (req.session.user.role !== 'teacher') {
-        return res.status(403).send("Access denied.");
-    }
-
-    const sql = `
-        SELECT 
-            s.student_id, 
-            s.student_name, 
-            s.class_id, 
-            s.module_slot,
-            a.attendance_id,
-            a.status, 
-            a.remarks 
-        FROM student s
-        LEFT JOIN attendance_records a ON s.student_id = a.student_id
-    `;
-    
-    pool.query(sql, (err, students) => {
-        if (err) {
-            console.error('Error fetching attendance records:', err);
-            return res.status(500).send('Database Error');
-        }
-
-        res.render('attendance', {
-            students: students, // <-- Fixed (matches callback variable)
-            user: req.session ? req.session.user : null
-        });
+    res.render('attendance', {
+      students: students,
+      user: req.session ? req.session.user : null
     });
+  });
 });
 
 app.get('/edit-attendance', (req, res) => {
