@@ -69,10 +69,14 @@
                                         <span class="badge bg-secondary"><%= student.class_id %></span>
                                     </td>
                                     <td>
-                                        <% if (student.status) { %>
-                                            <span class="badge <%= student.status === 'Present' ? 'bg-success' : 'bg-danger' %>">
-                                                <%= student.status %>
+                                        <% if (student.status === 'Present') { %>
+                                             <span class="badge bg-success">Present</span>
+                                                
                                             </span>
+                                         <% } else if (student.status === 'Late') { %>    <span class="badge bg-warning text-dark">Late</span>
+
+                                         <% } else if (student.status === 'Absent') { %>   <span class="badge bg-danger">Absent</span>
+
                                         <% } else { %>
                                             <span class="badge bg-warning text-dark">Unmarked</span>
                                         <% } %>
