@@ -188,16 +188,16 @@ app.get('/classes', (req, res) => {
         const classes = classRows.map(row => row.class_id);
 
         let studentSql = `
-            SELECT 
-                s.student_id, 
-                s.student_name, 
-                s.class_id, 
-                s.image, 
-                a.status, 
-                a.remarks, 
+            SELECT
+                s.student_id,
+                s.student_name,
+                s.class_id,
+                s.image,
+                COALESCE(a.status, 'Not Marked') AS status,
+                a.remarks,
                 COALESCE(NULLIF(s.module_slot, ''), NULLIF(a.module_slot, '')) AS module_slot
             FROM student s
-            LEFT JOIN attendance_records a ON s.student_id = a.student_id
+            LEFT JOIN attendance_records a ON s.student_id = a.student_id AND a.date = CURDATE()
         `;
         const queryParams = [];
 
