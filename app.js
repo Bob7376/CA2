@@ -357,6 +357,8 @@ app.post('/attendance/update/:attendance_id', (req, res) => {
 
     const studentId = req.body.student_id;
     const { status, remarks } = req.body;
+    const moduleSlot = req.body.module_slot || null;
+    const moduleId = moduleSlot ? moduleSlot.split('-')[0] : null;
 
     pool.query(
         "SELECT attendance_id FROM attendance_records WHERE student_id = ? AND date = CURDATE()",
@@ -368,8 +370,8 @@ app.post('/attendance/update/:attendance_id', (req, res) => {
             }
 
             if (rows.length > 0) {
-                const sql = "UPDATE attendance_records SET status = ?, remarks = ? WHERE attendance_id = ?;";
-                pool.query(sql, [status, remarks, rows[0].attendance_id], (err2) => {
+                const sql = "UPDATE attendance_records SET status = ?, remarks = ?, module_slot = ?, module_id = ? WHERE attendance_id = ?;";
+                pool.query(sql, [status, remarks, moduleSlot, moduleId, rows[0].attendance_id], (err2) => {
                     if (err2) {
                         console.error(err2);
                         return res.status(500).send("Database Error");
@@ -377,8 +379,8 @@ app.post('/attendance/update/:attendance_id', (req, res) => {
                     res.redirect('/attendance');
                 });
             } else {
-                const sql = "INSERT INTO attendance_records (student_id, date, time, status, remarks) VALUES (?, CURDATE(), CURTIME(), ?, ?);";
-                pool.query(sql, [studentId, status, remarks], (err2) => {
+                const sql = "INSERT INTO attendance_records (student_id, module_id, date, time, module_slot, status, remarks) VALUES (?, ?, CURDATE(), CURTIME(), ?, ?, ?);";
+                pool.query(sql, [studentId, moduleId, moduleSlot, status, remarks], (err2) => {
                     if (err2) {
                         console.error(err2);
                         return res.status(500).send("Database Error");

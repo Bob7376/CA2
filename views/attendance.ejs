@@ -55,6 +55,7 @@
                             <td>
                                 <form id="form-<%= student.student_id %>" action="/attendance/update/<%= student.attendance_id || student.student_id %>" method="POST">
                                     <input type="hidden" name="student_id" value="<%= student.student_id %>">
+                                    <input type="hidden" name="module_slot" value="<%= student.module_slot || '' %>">
                                     <select name="status" class="form-select form-select-sm" required>
                                         <option value="" disabled <%= !student.status ? "selected" : "" %>>-- Select --</option>
                                         <option value="Present" <%= student.status === "Present" ? "selected" : "" %>>Present</option>
