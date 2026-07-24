@@ -274,33 +274,6 @@ app.get('/attendance', (req, res) => {
   });
 });
 
-app.post('/attendance/update/:id', async (req, res) => {
-  try {
-    const paramId = req.params.id;
-    const studentId = req.body.student_id || paramId;
-    const status = req.body.status;
-    const remarks = req.body.remarks || '';
-    const moduleSlot = req.body.module_slot; 
-
-    const sql = `
-      INSERT INTO attendance_records 
-        (student_id, module_slot, date, time, status, remarks)
-      VALUES (?, ?, CURDATE(), CURTIME(), ?, ?)
-      ON DUPLICATE KEY UPDATE 
-        module_slot = VALUES(module_slot),
-        status = VALUES(status), 
-        remarks = VALUES(remarks);
-    `;
-
-    await pool.promise().query(sql, [studentId, moduleSlot, status, remarks]);
-
-    res.redirect('/attendance');
-
-  } catch (err) {
-    console.error('Save error:', err);
-    res.status(500).send('Failed to update attendance: ' + err.message);
-  }
-});
 app.get('/students/:id', async (req, res) => {
   try {
     const studentId = req.params.id;
