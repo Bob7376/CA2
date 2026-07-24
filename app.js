@@ -39,15 +39,6 @@ const pool = mysql.createPool({
     }
 });
 
-function getClassList(callback) {
-    const sql = `SELECT * FROM class;`; // or your class query
-    pool.query(sql, (err, results) => {
-        if (err) return callback(err, null);
-        callback(null, results);
-    });
-}
-
-
 function getModuleSlots(callback) {
     const sql = `
         SELECT DISTINCT module_slot 
@@ -454,6 +445,9 @@ app.post('/admin/edit-student', (req, res) => {
     pool.query(sql, [student_name, class_id, photoPath, studentId], (err, result) => {
         if (err) {
             console.error("Error editing student:", err);
+            if (err.code === 'ER_NO_REFERENCED_ROW_2') {
+                return res.status(400).json({ success: false, message: "That class does not exist." });
+            }
             return res.status(500).json({ success: false });
         }
         res.json({ success: true });

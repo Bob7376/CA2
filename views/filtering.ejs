@@ -136,7 +136,11 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Class</label>
-                                    <input type="text" id="editClassId" class="form-control" required>
+                                    <select id="editClassId" class="form-select" required>
+                                        <% classes.forEach(function(cls) { %>
+                                            <option value="<%= cls %>"><%= cls %></option>
+                                        <% }) %>
+                                    </select>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Photo Path</label>
