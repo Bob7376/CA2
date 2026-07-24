@@ -241,12 +241,24 @@ app.get('/attendance', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
   if (req.session.user.role !== 'teacher') return res.status(403).send("Access denied.");
 
-  // Simple LEFT JOIN on student_id only
+  // Include a.attendance_id so your template's form action works!
+  // Subquery ensures only the latest record per student is joined if multiple exist.
   const sql = `
-    SELECT s.student_id, s.student_name, s.class_id, s.module_slot, 
-           a.status, a.remarks
+    SELECT 
+      s.student_id, 
+      s.student_name, 
+      s.class_id, 
+      s.module_slot, 
+      a.attendance_id,
+      a.status, 
+      a.remarks
     FROM student s
-    LEFT JOIN attendance_records a ON s.student_id = a.student_id
+    LEFT JOIN (
+      SELECT * FROM attendance_records
+      WHERE attendance_id IN (
+        SELECT MAX(attendance_id) FROM attendance_records GROUP BY student_id
+      )
+    ) a ON s.student_id = a.student_id
   `;
 
   pool.query(sql, (err, students) => {
@@ -260,6 +272,62 @@ app.get('/attendance', (req, res) => {
       user: req.session ? req.session.user : null
     });
   });
+});
+
+app.post('/attendance/update/:id', async (req, res) => {
+  try {
+    const paramId = req.params.id;
+    const studentId = req.body.student_id || paramId;
+    const status = req.body.status;
+    const remarks = req.body.remarks || '';
+    const moduleSlot = req.body.module_slot; 
+
+    const sql = `
+      INSERT INTO attendance_records 
+        (student_id, module_slot, date, time, status, remarks)
+      VALUES (?, ?, CURDATE(), CURTIME(), ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        module_slot = VALUES(module_slot),
+        status = VALUES(status), 
+        remarks = VALUES(remarks);
+    `;
+
+    await pool.promise().query(sql, [studentId, moduleSlot, status, remarks]);
+
+    res.redirect('/attendance');
+
+  } catch (err) {
+    console.error('Save error:', err);
+    res.status(500).send('Failed to update attendance: ' + err.message);
+  }
+});
+app.get('/students/:id', async (req, res) => {
+  try {
+    const studentId = req.params.id;
+
+    
+    const [students] = await pool.promise().query(
+      'SELECT * FROM student WHERE student_id = ?',
+      [studentId]
+    );
+
+    
+    const [attendanceRecords] = await pool.promise().query(
+      'SELECT * FROM attendance_records WHERE student_id = ? ORDER BY date DESC, time DESC',
+      [studentId]
+    );
+
+    
+    res.render('show', {
+      student: students[0],
+      attendanceRecords: attendanceRecords, 
+      user: req.session.user || null
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server Error');
+  }
 });
 
 app.get('/edit-attendance', (req, res) => {

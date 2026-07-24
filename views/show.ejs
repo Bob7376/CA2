@@ -99,7 +99,9 @@
 
                                             <td><%= record.module_id || '-' %></td>
 
-                                            <td><%= record.date || '-' %></td>
+                                            <td>
+                                                <%= new Date(record.date).toISOString().split('T')[0] %>
+                                            </td>
 
                                             <td><%= record.time || '-' %></td>
 
